@@ -9,7 +9,7 @@ import "src/SocialRecoveryWallet.sol";
 contract SocialRecoveryWalletTest is Test {
     SocialRecoveryWallet wallet;
     function setUp() public {
-        wallet = new SocialRecoveryWallet();
+        wallet = new SocialRecoveryWallet(0);
     }
 
     function testPositive() public {
