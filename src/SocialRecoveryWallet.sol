@@ -8,11 +8,11 @@ contract SocialRecoveryWallet {
     address payable public owner;
     address guardian_1;
     address guardian_2;
-    VerifySignature sigVerifier;
-    uint256 nonce;
     address public proposedOwner;
     uint256 public proposalTimestamp;
     uint256 waitingPeriod;
+    uint256 nonce;
+    VerifySignature sigVerifier;
 
     receive() external payable {}
 
@@ -96,6 +96,13 @@ contract SocialRecoveryWallet {
         require (proposalTimestamp!=0, "No proposal active");
         proposalTimestamp=0;
         proposedOwner = address(0);
+    }
+
+    function changeWaitingPeriod(uint256 _waitingPeriod) external onlyOwner {
+
+        require (proposalTimestamp==0, "Proposal already active");
+        waitingPeriod = _waitingPeriod;
+        
     }
 
     //have 2 guardians, if message (change owner) is signed by guardians then reset ownership (use nonce to avoid replay)

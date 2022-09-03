@@ -44,5 +44,62 @@ contract SocialRecoveryWalletTest is Test {
         wallet.withdraw(1 ether);
     }
 
+    function testSetGuardian() public {
+        address alice = vm.addr(1);
+        address bob = vm.addr(2);
+        address[] memory guardians = new address[](2);
+        guardians[0]=alice;
+        guardians[1]=bob;
+        bytes32 g1 = vm.load(address(wallet), bytes32(uint256(1)));
+        bytes32 g2 = vm.load(address(wallet), bytes32(uint256(2)));
+        assertEq(address(0), address(uint160(uint256(g1))));
+        assertEq(address(0), address(uint160(uint256(g2))));
+
+        wallet.setGuardians(guardians);
+        g1 = vm.load(address(wallet), bytes32(uint256(1)));
+        g2 = vm.load(address(wallet), bytes32(uint256(2)));
+
+        assertEq(alice, address(uint160(uint256(g1))));
+        assertEq(bob, address(uint160(uint256(g2))));
+
+
+    }
+
+    function testSetGuardian1() public {
+        address alice = vm.addr(1);
+        address[] memory guardians = new address[](1);
+        guardians[0]=alice;
+        vm.expectRevert(InvalidGuardianInitialization.selector);
+        wallet.setGuardians(guardians);
+       
+
+
+    }
+
+    function testSetGuardian3() public {
+        address alice = vm.addr(1);
+        address[] memory guardians = new address[](3);
+        guardians[0]=alice;
+        guardians[1]=vm.addr(2);
+        guardians[2]=vm.addr(3);
+        vm.expectRevert(InvalidGuardianInitialization.selector);
+        wallet.setGuardians(guardians);
+       
+
+
+    }
+
+
     receive() external payable {}
 }
+
+// set guardian positive flow
+// set guardian negative flow
+// set new owner - correct signature
+// set new owner - incorrect signature
+// set new owner - incorrect owner address / nonce
+// finalize owner - incorrect proposedOwner
+// finalize owner - before waitingPeriod
+// finalize owner - correct flow
+// revert ownership
+// set owner called before waiting period over
