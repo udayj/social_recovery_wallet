@@ -65,7 +65,7 @@ contract SocialRecoveryWallet {
         require (_nonce == nonce, "Invalid proposal nonce");
 
         bool isVerifiedGuardian1=sigVerifier.verify(guardian_1, _proposedOwner, _nonce, signature_1);
-        bool isVerifiedGuardian2=sigVerifier.verify(guardian_1, _proposedOwner, _nonce, signature_2);
+        bool isVerifiedGuardian2=sigVerifier.verify(guardian_2, _proposedOwner, _nonce, signature_2);
         if (!isVerifiedGuardian1 || !isVerifiedGuardian2) {
             revert InvalidGuardianSignature();
         }

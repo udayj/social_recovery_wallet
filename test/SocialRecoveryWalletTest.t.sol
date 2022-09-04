@@ -89,7 +89,134 @@ contract SocialRecoveryWalletTest is Test {
 
     }
 
+    function testSetNewOwnerWithoutGuardianSet() public {
 
+
+
+        address carol = vm.addr(3);
+
+        uint256 nonce = wallet.getNonce();
+        bytes32 msgHash= keccak256(abi.encodePacked(carol, nonce));
+        bytes32 ethMsgHash = keccak256(
+                abi.encodePacked("\x19Ethereum Signed Message:\n32", msgHash));
+        uint8 v;
+        bytes32 r;
+        bytes32 s;
+        bytes1 v_byte;
+        (v,r,s) = vm.sign(1,ethMsgHash);
+        v_byte = bytes1(v);
+        bytes memory signature_1 = bytes.concat(r,s,v_byte);
+        (v,r,s) = vm.sign(2,ethMsgHash);
+        v_byte = bytes1(v);
+        bytes memory signature_2 = bytes.concat(r,s,v_byte);
+        vm.expectRevert("Guardians not set");
+        wallet.setNewOwner(carol, nonce, signature_1, signature_2);
+
+    }
+
+    function testSetNewOwner() public {
+
+        address alice = vm.addr(1);
+        address bob = vm.addr(2);
+
+        address carol = vm.addr(3);
+        address dave=vm.addr(4);
+
+        uint256 nonce = wallet.getNonce();
+
+        //calculate message hash
+        bytes32 msgHash= keccak256(abi.encodePacked(carol, nonce));
+        bytes32 ethMsgHash = keccak256(
+                abi.encodePacked("\x19Ethereum Signed Message:\n32", msgHash));
+        uint8 v;
+        bytes32 r;
+        bytes32 s;
+        bytes1 v_byte;
+        //msg sign by alice
+        (v,r,s) = vm.sign(1,ethMsgHash);
+        v_byte = bytes1(v);
+        bytes memory signature_1 = bytes.concat(r,s,v_byte);
+        //msg sign by bob
+        (v,r,s) = vm.sign(2,ethMsgHash);
+        v_byte = bytes1(v);
+        bytes memory signature_2 = bytes.concat(r,s,v_byte);
+        
+        //set alice and bob as the guardians
+        address[] memory guardians = new address[](2);
+        guardians[0]=alice;
+        guardians[1]=bob;
+
+        wallet.setGuardians(guardians);
+        //anybody can send the message to setNewOwner - hence sending through dave
+        vm.startPrank(dave);
+
+        assertEq(wallet.proposedOwner(),address(0));
+        assertEq(wallet.proposalTimestamp(),0);
+        wallet.setNewOwner(carol, nonce, signature_1, signature_2);
+        assertEq(wallet.proposedOwner(),carol);
+        assertEq(wallet.proposalTimestamp(),block.timestamp);
+        assertEq(wallet.getNonce(),nonce+1);
+
+    }
+
+    function setupAndSignMsg() private returns(address, uint256, bytes memory, bytes memory) {
+
+        
+       
+
+        address carol = vm.addr(3);
+       
+
+        uint256 nonce = wallet.getNonce();
+
+        //calculate message hash
+        bytes32 msgHash= keccak256(abi.encodePacked(carol, nonce));
+        bytes32 ethMsgHash = keccak256(
+                abi.encodePacked("\x19Ethereum Signed Message:\n32", msgHash));
+        uint8 v;
+        bytes32 r;
+        bytes32 s;
+        bytes1 v_byte;
+        //msg sign by alice
+        (v,r,s) = vm.sign(1,ethMsgHash);
+        v_byte = bytes1(v);
+        bytes memory signature_1 = bytes.concat(r,s,v_byte);
+        //msg sign by bob
+        (v,r,s) = vm.sign(2,ethMsgHash);
+        v_byte = bytes1(v);
+        bytes memory signature_2 = bytes.concat(r,s,v_byte);
+        
+        //set alice and bob as the guardians
+        address[] memory guardians = new address[](2);
+        guardians[0]=vm.addr(1);
+        guardians[1]=vm.addr(2);
+
+        wallet.setGuardians(guardians);
+        return (carol,nonce, signature_1,signature_2);
+
+    }
+
+    function testSetNewOwnerInvalidProposal() public {
+
+        (address carol,uint256 nonce, bytes memory signature_1, bytes memory signature_2) = setupAndSignMsg();
+        address dave=vm.addr(4);
+        //anybody can send the message to setNewOwner - hence sending through dave
+        vm.startPrank(dave);
+        vm.expectRevert("Invalid proposal");
+        wallet.setNewOwner(address(0), nonce, signature_1, signature_2);
+
+    }
+
+    function testSetNewOwnerInvalidNonce() public {
+
+        (address carol,uint256 nonce, bytes memory signature_1, bytes memory signature_2) = setupAndSignMsg();
+        address dave=vm.addr(4);
+        //anybody can send the message to setNewOwner - hence sending through dave
+        vm.startPrank(dave);
+        vm.expectRevert("Invalid proposal nonce");
+        wallet.setNewOwner(carol, nonce+1, signature_1, signature_2);
+
+    }
     receive() external payable {}
 }
 
