@@ -198,7 +198,7 @@ contract SocialRecoveryWalletTest is Test {
 
     function testSetNewOwnerInvalidProposal() public {
 
-        (address carol,uint256 nonce, bytes memory signature_1, bytes memory signature_2) = setupAndSignMsg();
+        ( , uint256 nonce, bytes memory signature_1, bytes memory signature_2) = setupAndSignMsg();
         address dave=vm.addr(4);
         //anybody can send the message to setNewOwner - hence sending through dave
         vm.startPrank(dave);
@@ -217,6 +217,122 @@ contract SocialRecoveryWalletTest is Test {
         wallet.setNewOwner(carol, nonce+1, signature_1, signature_2);
 
     }
+
+    function testFinalizeOwner() public {
+
+        address alice = vm.addr(1);
+        address bob = vm.addr(2);
+
+        address carol = vm.addr(3);
+        address dave=vm.addr(4);
+
+        uint256 nonce = wallet.getNonce();
+
+        //calculate message hash
+        bytes32 msgHash= keccak256(abi.encodePacked(carol, nonce));
+        bytes32 ethMsgHash = keccak256(
+                abi.encodePacked("\x19Ethereum Signed Message:\n32", msgHash));
+        uint8 v;
+        bytes32 r;
+        bytes32 s;
+        bytes1 v_byte;
+        //msg sign by alice
+        (v,r,s) = vm.sign(1,ethMsgHash);
+        v_byte = bytes1(v);
+        bytes memory signature_1 = bytes.concat(r,s,v_byte);
+        //msg sign by bob
+        (v,r,s) = vm.sign(2,ethMsgHash);
+        v_byte = bytes1(v);
+        bytes memory signature_2 = bytes.concat(r,s,v_byte);
+        
+        //set alice and bob as the guardians
+        address[] memory guardians = new address[](2);
+        guardians[0]=alice;
+        guardians[1]=bob;
+        wallet.changeWaitingPeriod(100);
+        wallet.setGuardians(guardians);
+        //anybody can send the message to setNewOwner - hence sending through dave
+        vm.startPrank(dave);
+        assertEq(wallet.owner(),address(this));      
+        wallet.setNewOwner(carol, nonce, signature_1, signature_2);
+        
+        skip(100);
+        assertEq(wallet.owner(),address(this));      
+        wallet.finalizeNewOwner(carol);  
+        assertEq(wallet.owner(),carol);      
+
+    }
+
+    function testInvalidProposalFinalize() public {
+
+        (address carol,uint256 nonce, bytes memory signature_1, bytes memory signature_2) = setupAndSignMsg();
+        address dave=vm.addr(4);
+        wallet.changeWaitingPeriod(100);
+        //anybody can send the message to setNewOwner - hence sending through dave
+        vm.startPrank(dave);
+        
+        wallet.setNewOwner(carol, nonce, signature_1, signature_2);
+        
+        skip(100);
+        vm.expectRevert("Invalid proposal");
+        wallet.finalizeNewOwner(dave);     
+    }
+
+    function testNoActiveProposalFinalize() public {
+
+        (address carol,uint256 nonce, bytes memory signature_1, bytes memory signature_2) = setupAndSignMsg();
+        address dave=vm.addr(4);
+        wallet.changeWaitingPeriod(100);
+        //anybody can send the message to setNewOwner - hence sending through dave
+        vm.startPrank(dave);
+        
+        //wallet.setNewOwner(carol, nonce, signature_1, signature_2);
+        
+        skip(100);
+        vm.expectRevert("No proposal active");
+        wallet.finalizeNewOwner(carol);     
+    }
+
+    function testWaitingPeriodNotOver() public {
+
+        (address carol,uint256 nonce, bytes memory signature_1, bytes memory signature_2) = setupAndSignMsg();
+        address dave=vm.addr(4);
+        wallet.changeWaitingPeriod(100);
+        //anybody can send the message to setNewOwner - hence sending through dave
+        vm.startPrank(dave);
+        
+        wallet.setNewOwner(carol, nonce, signature_1, signature_2);
+        
+        skip(50);
+        vm.expectRevert("Waiting period not over");
+        wallet.finalizeNewOwner(carol); 
+    }
+
+    function testRevertProposal() public {
+
+        (address carol,uint256 nonce, bytes memory signature_1, bytes memory signature_2) = setupAndSignMsg();
+        address dave=vm.addr(4);
+        wallet.changeWaitingPeriod(100);
+        //anybody can send the message to setNewOwner - hence sending through dave
+        vm.startPrank(dave);
+        
+        wallet.setNewOwner(carol, nonce, signature_1, signature_2);
+        
+        skip(100);
+        //vm.expectRevert("Waiting period not over");
+        vm.stopPrank();
+        assertEq(wallet.proposedOwner(),carol);
+        assertEq(wallet.proposalTimestamp(),block.timestamp-100);
+        wallet.revertProposal(); 
+        assertEq(wallet.proposedOwner(),address(0));
+        assertEq(wallet.proposalTimestamp(),0);
+
+        vm.expectRevert("No proposal active");
+        wallet.finalizeNewOwner(carol); 
+        assertEq(wallet.owner(),address(this));
+
+    }
+    
     receive() external payable {}
 }
 
