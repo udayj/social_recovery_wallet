@@ -1,0 +1,3 @@
+# Social Recovery Wallet
+
+The basic features of this smart contract wallet include being able to accept ETH, withdraw ETH (by owner only), set exactly 2 addresses as guardians of the wallet. These guardian addresses (they need to be EOAs for signing transactions) can sign transactions to change ownership of the account in the event that the current owner misplaces their keys. Such an ownership change will come with a timelock period (pre-decided by the owner) after which the change in ownership can be finalized. During the wait period, the owner can send a transaction to revert the proposal put forth by the guardians in a previous proposal call.
